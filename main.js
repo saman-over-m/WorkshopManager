@@ -235,11 +235,103 @@ async function smokeTest() {
   return marker;
 }
 
+async function uiSmokeTest() {
+  return new Promise((resolve, reject) => {
+    const win = new BrowserWindow({
+      show: false,
+      width: 1440,
+      height: 900,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    });
+
+    const fail = (err) => {
+      try { win.destroy(); } catch {}
+      reject(err instanceof Error ? err : new Error(String(err)));
+    };
+
+    win.webContents.once('did-finish-load', async () => {
+      try {
+        const result = await win.webContents.executeJavaScript(`
+          (() => {
+            const visible = (el) => !!el && getComputedStyle(el).display !== 'none' && !el.classList.contains('hidden');
+            const nav = (name) => {
+              const b = document.querySelector('.side .nav button[data-p="' + name + '"]');
+              if (!b) throw new Error('Main navigation button not found: ' + name);
+              b.click();
+            };
+
+            const required = ['#dash','#cards','#customers','#suppliers','#mechanics','#tips','#garage','#reports','#backup','#invoices','#settings'];
+            const missing = required.filter(s => !document.querySelector(s));
+            if (missing.length) throw new Error('Missing main UI sections: ' + missing.join(','));
+
+            nav('customers');
+            if (!document.querySelector('.side .nav button[data-p="customers"]').classList.contains('active')) {
+              throw new Error('Customers navigation did not activate');
+            }
+
+            nav('backup');
+            if (!document.querySelector('#backup').classList.contains('active')) {
+              throw new Error('Backup page did not activate');
+            }
+
+            nav('invoices');
+            if (!visible(document.querySelector('#invoices'))) {
+              throw new Error('Invoices page is not visible');
+            }
+
+            if (!document.querySelector('#factorEmbed')) {
+              throw new Error('Embedded FactorPlus container is missing');
+            }
+            if (typeof window.openFactor !== 'function') {
+              throw new Error('Workshop invoice bridge openFactor is missing');
+            }
+            if (!window.FactorPlusEmbedded || typeof window.FactorPlusEmbedded.newInvoice !== 'function') {
+              throw new Error('Embedded FactorPlus API is missing');
+            }
+
+            window.openFactor('new');
+            const invoiceSection = document.querySelector('#invoiceSection');
+            if (!visible(invoiceSection)) {
+              throw new Error('FactorPlus invoice editor did not open');
+            }
+            if (!document.querySelector('#invoiceNo')) {
+              throw new Error('FactorPlus invoice number field is missing');
+            }
+
+            return {
+              ok: true,
+              mainSections: required.length,
+              factorEmbedded: true,
+              invoiceEditor: true
+            };
+          })()
+        `);
+        console.log('UI_SMOKE_OK ' + JSON.stringify(result));
+        win.destroy();
+        resolve(result);
+      } catch (e) {
+        fail(e);
+      }
+    });
+
+    win.webContents.once('did-fail-load', (_event, errorCode, errorDescription) => {
+      fail(new Error('UI load failed: ' + errorCode + ' ' + errorDescription));
+    });
+
+    win.loadFile(path.join(__dirname, 'index.html'));
+  });
+}
+
 app.whenReady().then(async () => {
   openDb();
   registerScheduledBackups();
   if (process.argv.includes('--backup-now')) { try { createBackup(); app.quit(); } catch (e) { console.error(e); app.exit(1); } return; }
   if (process.argv.includes('--smoke-test')) { try { const marker = await smokeTest(); console.log(`SMOKE_OK ${marker}`); app.quit(); } catch (e) { console.error(e); app.exit(1); } return; }
+  if (process.argv.includes('--ui-smoke-test')) { try { await uiSmokeTest(); app.quit(); } catch (e) { console.error(e); app.exit(1); } return; }
   makeWindow();
 });
 app.on('window-all-closed', () => { if (db) { try { db.close(); } catch {} } if (process.platform !== 'darwin') app.quit(); });
