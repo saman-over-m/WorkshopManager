@@ -1,0 +1,48 @@
+{
+  "name": "workshop-manager",
+  "version": "0.3.0",
+  "description": "Workshop Manager - Persian RTL auto repair shop manager",
+  "main": "main.js",
+  "author": "Workshop Manager",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test": "electron . --smoke-test",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "npm run rebuild && electron-builder --win nsis",
+    "check": "node --check main.js && node --check preload.js && node --check smoke-test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1"
+  },
+  "devDependencies": {
+    "electron": "^38.2.1",
+    "electron-builder": "^26.0.12",
+    "@electron/rebuild": "^4.0.1"
+  },
+  "build": {
+    "appId": "com.workshopmanager.desktop",
+    "productName": "Workshop Manager",
+    "asar": true,
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js",
+      "smoke-test.js",
+      "assets/**/*",
+      "README_FA.md"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "Workshop-Manager-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Workshop Manager"
+    }
+  }
+}
