@@ -302,14 +302,10 @@ async function uiSmokeTest() {
               throw new Error('FactorPlus invoice number field is missing');
             }
 
-            return {
-              ok: true,
-              mainSections: required.length,
-              factorEmbedded: true,
-              invoiceEditor: true
-            };
+            return { ok: true, mainSections: required.length, factorEmbedded: true, invoiceEditor: true };
           })()
-        `);
+        `).catch(e => ({ ok:false, error:String(e?.message || e), stack:String(e?.stack || '') }));
+        if (!result?.ok) throw new Error('UI smoke assertion failed: ' + JSON.stringify(result));
         console.log('UI_SMOKE_OK ' + JSON.stringify(result));
         win.destroy();
         resolve(result);
