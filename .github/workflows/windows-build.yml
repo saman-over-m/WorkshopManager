@@ -1,0 +1,43 @@
+name: Workshop Manager - Windows Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Check JavaScript
+        run: npm run check
+
+      - name: Rebuild SQLite for Electron
+        run: npm run rebuild
+
+      - name: Run full tests
+        run: npm test
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Workshop-Manager-Windows
+          path: dist/*.exe
+          if-no-files-found: error
