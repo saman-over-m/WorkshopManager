@@ -1,6 +1,9 @@
 name: Workshop Manager - Windows Build
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
