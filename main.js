@@ -259,13 +259,28 @@ async function uiSmokeTest() {
         const factorExists = await run("!!document.querySelector('#factorEmbed')");
         const invoiceNoExists = await run("!!document.querySelector('#invoiceNo')");
         const bridgeExists = await run('typeof window.openFactor === "function" && !!window.FactorPlusEmbedded');
-        console.log('UI_SMOKE_VALUES', JSON.stringify({title,sectionCount,factorExists,invoiceNoExists,bridgeExists}));
+
         if (Number(sectionCount) < 10) throw new Error('Main navigation UI is incomplete: ' + sectionCount);
         if (!factorExists) throw new Error('Embedded FactorPlus container is missing');
         if (!invoiceNoExists) throw new Error('FactorPlus invoice number field is missing');
         if (!bridgeExists) throw new Error('Workshop invoice bridge is missing');
+
+        await run("document.querySelector('.side .nav button[data-p=\"customers\"]').click()");
+        const customerActive = await run("document.querySelector('.side .nav button[data-p=\"customers\"]')?.classList.contains('active')");
+        if (!customerActive) throw new Error('Customers navigation click failed');
+
+        await run("document.querySelector('.side .nav button[data-p=\"invoices\"]').click()");
+        const invoicesActive = await run("document.querySelector('.side .nav button[data-p=\"invoices\"]')?.classList.contains('active')");
+        if (!invoicesActive) throw new Error('Invoices navigation click failed');
+
+        await run('window.openFactor("new")');
+        await new Promise(r => setTimeout(r, 200));
+        const invoiceVisible = await run("!document.querySelector('#invoiceSection')?.classList.contains('hidden')");
+        if (!invoiceVisible) throw new Error('FactorPlus new invoice editor did not open');
+
+        console.log('UI_SMOKE_OK', JSON.stringify({title,mainSections:Number(sectionCount),factorEmbedded:true,navigation:true,invoiceEditor:true}));
         win.destroy();
-        resolve({ok:true,title,sectionCount:Number(sectionCount)});
+        resolve({ok:true});
       } catch (e) { fail(e); }
     });
     win.webContents.once('did-fail-load', (_event, errorCode, errorDescription) => fail(new Error('UI load failed: ' + errorCode + ' ' + errorDescription)));
