@@ -114,15 +114,124 @@ ipcMain.handle('restore-backup-dialog', async () => { const r = await dialog.sho
 async function smokeTest() {
   ensureDirs();
   const marker = path.join(DATA_DIR, 'smoke-marker.json');
-  const state = { ...defaultState(), seq: 4242, cards: [{ id:'smoke-card', no:4242, name:'تست', parts:[{id:'p1',name:'لنت',q:1,price:100,purchasePrice:50,paid:0}], jobs:[{id:'j1',name:'تعویض',labor:200}], payments:[{id:'pay1',amount:100}], discount:0, released:false }] };
+
+  // 1) Write a realistic cardex/state record and verify SQLite persistence.
+  const state = {
+    ...defaultState(),
+    seq: 4242,
+    cards: [{
+      id:'smoke-card',
+      no:4242,
+      name:'تست SQLite',
+      phone:'09120000000',
+      parts:[{
+        id:'p1',
+        name:'لنت ترمز',
+        q:2,
+        price:1000,
+        purchasePrice:700,
+        paid:0
+      }],
+      jobs:[{
+        id:'j1',
+        name:'تعویض لنت',
+        mechanic:'تعمیرکار تست',
+        labor:2000
+      }],
+      payments:[{id:'pay1',amount:1000}],
+      discount:100,
+      released:false
+    }]
+  };
+
   saveState(state);
-  const loaded = loadState();
-  if (loaded.seq !== 4242 || loaded.cards.length !== 1) throw new Error('SQLite state persistence failed');
-  saveFactorInvoices([{id:'smoke-invoice',invoiceNo:'4242',customer:'تست',date:'1405/06/29',items:[{name:'لنت',qty:1,price:100}]}]);
-  if (listFactorInvoices().length < 1) throw new Error('Invoice persistence failed');
-  const b = createBackup();
-  if (!fs.existsSync(b.path)) throw new Error('Backup file was not created');
-  fs.writeFileSync(marker, JSON.stringify({ok:true,db:DB_PATH,backup:b.path}));
+  let loaded = loadState();
+  if (
+    loaded.seq !== 4242 ||
+    loaded.cards.length !== 1 ||
+    loaded.cards[0].parts[0].q !== 2 ||
+    loaded.cards[0].jobs[0].labor !== 2000 ||
+    loaded.cards[0].payments[0].amount !== 1000
+  ) {
+    throw new Error('SQLite state persistence failed');
+  }
+
+  // 2) Persist an invoice and verify its actual contents, not just row count.
+  const invoice = {
+    id:'smoke-invoice',
+    invoiceNo:'4242',
+    customer:'تست SQLite',
+    phone:'09120000000',
+    date:'1405/06/29',
+    cardexNo:4242,
+    discount:100,
+    items:[
+      {name:'لنت ترمز',qty:2,price:1000,type:'part'},
+      {name:'تعویض لنت',qty:1,price:2000,type:'job'}
+    ]
+  };
+
+  saveFactorInvoices([invoice]);
+  let invoices = listFactorInvoices();
+  const savedInvoice = invoices.find(x => x.id === invoice.id);
+  if (
+    !savedInvoice ||
+    savedInvoice.customer !== 'تست SQLite' ||
+    savedInvoice.cardexNo !== 4242 ||
+    savedInvoice.items.length !== 2 ||
+    savedInvoice.items[0].qty !== 2
+  ) {
+    throw new Error('Invoice persistence/content test failed');
+  }
+
+  // 3) Create a real SQLite backup.
+  const backup = createBackup();
+  if (!fs.existsSync(backup.path) || fs.statSync(backup.path).size < 1000) {
+    throw new Error('Backup file was not created correctly');
+  }
+
+  // 4) Mutate both state and invoices after the backup.
+  saveState({
+    ...loaded,
+    seq:9999,
+    cards:[{id:'mutated-card',no:9999,name:'داده تغییر یافته',parts:[],jobs:[],payments:[]}]
+  });
+  clearFactorInvoices();
+
+  loaded = loadState();
+  if (loaded.seq !== 9999 || listFactorInvoices().length !== 0) {
+    throw new Error('Post-backup mutation setup failed');
+  }
+
+  // 5) Restore the backup and verify both state AND invoice data return.
+  restoreBackup(backup.path);
+  loaded = loadState();
+  invoices = listFactorInvoices();
+
+  const restoredInvoice = invoices.find(x => x.id === 'smoke-invoice');
+  if (
+    loaded.seq !== 4242 ||
+    loaded.cards.length !== 1 ||
+    loaded.cards[0].id !== 'smoke-card' ||
+    loaded.cards[0].parts[0].name !== 'لنت ترمز' ||
+    loaded.cards[0].parts[0].purchasePrice !== 700 ||
+    !restoredInvoice ||
+    restoredInvoice.customer !== 'تست SQLite' ||
+    restoredInvoice.items.length !== 2
+  ) {
+    throw new Error('SQLite backup/restore integrity test failed');
+  }
+
+  // 6) Leave a small marker for CI diagnostics.
+  fs.writeFileSync(marker, JSON.stringify({
+    ok:true,
+    db:DB_PATH,
+    backup:backup.path,
+    restored:true,
+    cardex:loaded.cards[0].no,
+    invoice:restoredInvoice.invoiceNo
+  }, null, 2));
+
   return marker;
 }
 
