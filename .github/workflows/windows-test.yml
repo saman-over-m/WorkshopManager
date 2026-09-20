@@ -1,0 +1,33 @@
+name: Workshop Manager - Windows Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check JavaScript
+        run: npm run check
+
+      - name: Rebuild native SQLite module
+        run: npm run rebuild
+
+      - name: Run Electron smoke test
+        run: npm test
