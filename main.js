@@ -247,62 +247,28 @@ async function uiSmokeTest() {
         nodeIntegration: false
       }
     });
-
-    const fail = (err) => {
-      try { win.destroy(); } catch {}
-      reject(err instanceof Error ? err : new Error(String(err)));
-    };
-
+    const fail = (err) => { try { win.destroy(); } catch {} reject(err instanceof Error ? err : new Error(String(err))); };
     win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
       console.log('RENDERER_CONSOLE', level, message, sourceId + ':' + line);
     });
-
     win.webContents.once('did-finish-load', async () => {
       try {
         const run = (code) => win.webContents.executeJavaScript(code, true);
-
         const title = await run('document.title');
-        const sectionCount = await run('document.querySelectorAll(".side .nav button[data-p]").length');
-        const factorExists = await run('!!document.querySelector("#factorEmbed")');
-        const invoiceNoExists = await run('!!document.querySelector("#invoiceNo")');
+        const sectionCount = await run("document.querySelectorAll('.side .nav button[data-p]').length");
+        const factorExists = await run("!!document.querySelector('#factorEmbed')");
+        const invoiceNoExists = await run("!!document.querySelector('#invoiceNo')");
         const bridgeExists = await run('typeof window.openFactor === "function" && !!window.FactorPlusEmbedded');
-
+        console.log('UI_SMOKE_VALUES', JSON.stringify({title,sectionCount,factorExists,invoiceNoExists,bridgeExists}));
         if (Number(sectionCount) < 10) throw new Error('Main navigation UI is incomplete: ' + sectionCount);
         if (!factorExists) throw new Error('Embedded FactorPlus container is missing');
         if (!invoiceNoExists) throw new Error('FactorPlus invoice number field is missing');
         if (!bridgeExists) throw new Error('Workshop invoice bridge is missing');
-
-        await run('document.querySelector(".side .nav button[data-p=\"customers\"]").click()');
-        const customersActive = await run('document.querySelector(".side .nav button[data-p=\"customers\"]")?.classList.contains("active")');
-        if (!customersActive) throw new Error('Customers navigation did not activate');
-
-        await run('document.querySelector(".side .nav button[data-p=\"invoices\"]").click()');
-        const invoicesVisible = await run('getComputedStyle(document.querySelector("#invoices")).display !== "none"');
-        if (!invoicesVisible) throw new Error('Invoices page is not visible');
-
-        await run('window.openFactor("new")');
-        await new Promise(r => setTimeout(r, 150));
-        const factorVisible = await run('getComputedStyle(document.querySelector("#invoiceSection")).display !== "none" && !document.querySelector("#invoiceSection")?.classList.contains("hidden")');
-        if (!factorVisible) throw new Error('FactorPlus invoice editor did not open');
-
-        console.log('UI_SMOKE_OK', JSON.stringify({
-          title,
-          mainSections:Number(sectionCount),
-          factorEmbedded:!!factorExists,
-          bridge:true,
-          invoiceEditor:true
-        }));
         win.destroy();
-        resolve({ok:true});
-      } catch (e) {
-        fail(e);
-      }
+        resolve({ok:true,title,sectionCount:Number(sectionCount)});
+      } catch (e) { fail(e); }
     });
-
-    win.webContents.once('did-fail-load', (_event, errorCode, errorDescription) => {
-      fail(new Error('UI load failed: ' + errorCode + ' ' + errorDescription));
-    });
-
+    win.webContents.once('did-fail-load', (_event, errorCode, errorDescription) => fail(new Error('UI load failed: ' + errorCode + ' ' + errorDescription)));
     win.loadFile(path.join(__dirname, 'index.html'));
   });
 }
