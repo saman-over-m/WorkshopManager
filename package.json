@@ -7,10 +7,12 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "test": "electron . --smoke-test",
+    "test": "npm run smoke:data && npm run smoke:ui",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "dist": "npm run rebuild && electron-builder --win nsis",
-    "check": "node --check main.js && node --check preload.js && node --check smoke-test.js"
+    "check": "node --check main.js && node --check preload.js && node --check smoke-test.js",
+    "smoke:data": "electron . --smoke-test",
+    "smoke:ui": "electron . --ui-smoke-test"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1"
@@ -33,7 +35,14 @@
       "README_FA.md"
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "Workshop-Manager-Setup-${version}.exe"
     },
     "nsis": {
