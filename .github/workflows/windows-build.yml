@@ -2,42 +2,49 @@ name: Workshop Manager - Windows Build
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 30
-
+    env:
+      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+      ELECTRON_CUSTOM_DIR: v${ELECTRON_VERSION}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
+          cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Check JavaScript
+        shell: pwsh
+        run: |
+          npm install --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "First npm install failed; retrying once..."
+            Start-Sleep -Seconds 10
+            npm install --no-audit --no-fund
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check JavaScript and project files
         run: npm run check
-
-      - name: Rebuild SQLite for Electron
-        run: npm run rebuild
-
       - name: Run full tests
         run: npm test
-
       - name: Build Windows installer
         run: npm run dist -- --publish never
-
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release*.exe -ErrorAction Stop | Select-Object -First 1
+          Write-Host "Installer: $($exe.FullName)"
+          Write-Host "Size: $($exe.Length) bytes"
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: Workshop-Manager-Windows
-          path: dist/*.exe
+          path: release/*.exe
           if-no-files-found: error
