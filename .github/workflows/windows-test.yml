@@ -9,24 +9,28 @@ jobs:
   test-windows:
     runs-on: windows-latest
     timeout-minutes: 30
-
+    env:
+      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+      ELECTRON_CUSTOM_DIR: v${ELECTRON_VERSION}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
+          cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Check JavaScript
+        shell: pwsh
+        run: |
+          npm install --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "First npm install failed; retrying once..."
+            Start-Sleep -Seconds 10
+            npm install --no-audit --no-fund
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check JavaScript and project files
         run: npm run check
-
-      - name: Rebuild native SQLite module
-        run: npm run rebuild
-
       - name: Run Electron smoke test
         run: npm test
