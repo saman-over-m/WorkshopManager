@@ -1,74 +1,7 @@
 {
-  "name": "workshop-manager-windows",
-  "version": "1.2.0",
-  "description": "Workshop Manager Windows V4 - Web V25 + FactorPlus V34 + native cardex media",
-  "main": "main.js",
-  "author": "Workshop Manager",
-  "license": "UNLICENSED",
-  "scripts": {
-    "start": "electron .",
-    "test:syntax": "node scripts/check-syntax.js",
-    "test:smoke": "node scripts/smoke-electron.js",
-    "test": "npm run test:syntax && npm run test:smoke",
-    "dist": "electron-builder --win --x64"
-  },
-  "dependencies": {
-    "sql.js": "^1.13.0",
-    "ffmpeg-static": "^5.2.0"
-  },
-  "devDependencies": {
-    "electron": "^38.1.0",
-    "electron-builder": "^26.0.12",
-    "playwright": "^1.55.0"
-  },
-  "build": {
-    "appId": "ir.workshopmanager.pro",
-    "productName": "Workshop Manager",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "index.html",
-      "factor/**/*",
-      "factor_assets/**/*",
-      "main.js",
-      "preload.js",
-      "db.js",
-      "backup.ps1",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "WorkshopManager-${version}-Windows-x64.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Workshop Manager",
-      "runAfterFinish": true,
-      "include": "build/installer.nsh"
-    },
-    "extraResources": [
-      {
-        "from": "backup.ps1",
-        "to": "backup.ps1"
-      },
-      {
-        "from": "install-backup-tasks.ps1",
-        "to": "install-backup-tasks.ps1"
-      }
-    ],
-    "asarUnpack": [
-      "node_modules/ffmpeg-static/**"
-    ]
-  }
+  "name":"workshop-manager-windows","version":"1.4.0","description":"Workshop Manager Windows V4 - native cardex media and FFmpeg preview","main":"main.js","author":"Workshop Manager","license":"UNLICENSED",
+  "scripts":{"start":"electron .","check":"npm run test:syntax","test:syntax":"node scripts/check-syntax.js","test:smoke":"node scripts/smoke-electron.js","test":"npm run test:syntax && npm run test:smoke","dist":"electron-builder --win --x64"},
+  "dependencies":{"sql.js":"^1.13.0","ffmpeg-static":"^5.2.0"},
+  "devDependencies":{"electron":"38.1.0","electron-builder":"^26.0.12","playwright":"^1.55.0"},
+  "build":{"appId":"ir.workshopmanager.pro","productName":"Workshop Manager","directories":{"output":"release"},"files":["index.html","main.js","preload.js","db.js","package.json"],"win":{"target":[{"target":"nsis","arch":["x64"]}],"artifactName":"WorkshopManager-\${version}-Windows-x64.\${ext}"},"nsis":{"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true,"shortcutName":"Workshop Manager","runAfterFinish":true},"asarUnpack":["node_modules/ffmpeg-static/**"]}
 }
