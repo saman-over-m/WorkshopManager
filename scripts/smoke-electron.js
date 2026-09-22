@@ -1,0 +1,24 @@
+const { _electron: electron } = require('playwright');
+(async()=>{
+  const app = await electron.launch({ args: [require('path').join(__dirname,'..')] });
+  const page = await app.firstWindow();
+  const errors = [];
+  page.on('pageerror', e => errors.push(String(e)));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(800);
+  const title = await page.title();
+  const navCount = await page.locator('.nav button').count();
+  const hasCards = await page.locator('#cards').count();
+  const hasTips = await page.locator('#tips').count();
+  const hasInvoices = await page.locator('#invoices').count();
+  const factorSaved = await page.locator('#savedSection').count();
+  const mediaBridge = await page.evaluate(() => !!window.desktopInfo?.media?.save && !!window.desktopInfo?.media?.openFolder);
+  if (navCount < 10 || !hasCards || !hasTips || !hasInvoices || !factorSaved || !mediaBridge) throw new Error(`Basic UI missing. nav=${navCount}, invoices=${hasInvoices}, saved=${factorSaved}, media=${mediaBridge}`);
+  await page.locator('.side .nav button[data-p=\"invoices\"]').click();
+  await page.waitForTimeout(250);
+  if (!await page.locator('#dashboardSection').count() || !await page.locator('#savedSection').count()) throw new Error('Embedded FactorPlus sections missing');
+  if (errors.length) throw new Error('Renderer errors:\n' + errors.join('\n'));
+  console.log(JSON.stringify({ok:true,title,navCount}));
+  await app.close();
+})().catch(e=>{console.error(e);process.exit(1)});

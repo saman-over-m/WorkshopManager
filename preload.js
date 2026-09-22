@@ -1,20 +1,36 @@
 const { contextBridge, ipcRenderer } = require('electron');
+
 contextBridge.exposeInMainWorld('desktopInfo', {
   isElectron: true,
-  loadStateSync: () => ipcRenderer.sendSync('load-state-sync'),
-  saveState: (state) => ipcRenderer.invoke('save-state', state),
-  backupNow: () => ipcRenderer.invoke('backup-now'),
-  openBackupFolder: () => ipcRenderer.invoke('open-backup-folder'),
-  openDataFolder: () => ipcRenderer.invoke('open-data-folder'),
-  getPaths: () => ipcRenderer.invoke('get-paths'),
-  restoreBackup: () => ipcRenderer.invoke('restore-backup-dialog'),
-  saveFactorInvoices: (items) => ipcRenderer.invoke('save-factor-invoices', items),
-  getFactorInvoices: () => ipcRenderer.invoke('get-factor-invoices'),
-  clearFactorInvoices: () => ipcRenderer.invoke('clear-factor-invoices'),
+  platform: process.platform,
+  version: process.versions.electron,
+  loadStateSync: () => {
+    try { return ipcRenderer.sendSync('db:load-state'); } catch { return null; }
+  },
+  saveState: state => ipcRenderer.invoke('db:save-state', state),
+  saveFactorInvoices: invoices => ipcRenderer.invoke('db:save-factor-invoices', invoices),
+  clearFactorInvoices: () => ipcRenderer.invoke('db:clear-factor-invoices'),
+  backupNow: () => ipcRenderer.invoke('backup:now'),
+  getBackupInfo: () => ipcRenderer.invoke('backup:info'),
+  requestBackup: callback => {
+    const fn = () => { try { callback?.(); } catch {} };
+    ipcRenderer.on('backup:request-renderer-snapshot', fn);
+    return () => ipcRenderer.removeListener('backup:request-renderer-snapshot', fn);
+  },
+  submitBackupSnapshot: payload => ipcRenderer.invoke('backup:renderer-snapshot', payload),
+
+  media: {
+    save: (payload) => ipcRenderer.invoke('media:save', payload),
+    delete: (payload) => ipcRenderer.invoke('media:delete', payload),
+    getUrl: (payload) => ipcRenderer.invoke('media:get-url', payload),
+    getPreviewUrl: (payload) => ipcRenderer.invoke('media:get-preview-url', payload),
+    openFolder: (payload) => ipcRenderer.invoke('media:open-folder', payload),
+    openFile: (payload) => ipcRenderer.invoke('media:open-file', payload)
+  },
   invoices: {
-    chooseRoot: () => ipcRenderer.invoke('invoices-choose-root'),
-    getRoot: () => ipcRenderer.invoke('invoices-get-root'),
-    saveAll: (items) => ipcRenderer.invoke('invoices-save-all', items),
-    saveBundle: (x, png, svg) => ipcRenderer.invoke('invoices-save-bundle', x, png, svg)
+    chooseRoot: () => ipcRenderer.invoke('invoices:choose-root'),
+    getRoot: () => ipcRenderer.invoke('invoices:get-root'),
+    saveAll: invoices => ipcRenderer.invoke('invoices:save-all', invoices),
+    saveBundle: (invoice, pngDataUrl, svg) => ipcRenderer.invoke('invoices:save-bundle', { invoice, pngDataUrl, svg })
   }
 });
